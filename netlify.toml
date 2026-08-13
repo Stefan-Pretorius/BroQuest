@@ -1,0 +1,13 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+# Serve the same /api/state endpoint on Netlify that server.js provides locally.
+# The function keeps data in Netlify Blobs so the iPad and the parent page stay in sync.
+[[redirects]]
+  from = "/api/state"
+  to = "/.netlify/functions/state"
+  status = 200
+  force = true

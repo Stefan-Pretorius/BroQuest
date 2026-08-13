@@ -1,0 +1,7 @@
+# Local server data — lives on disk for node server.js only.
+# On Netlify the data lives in Netlify Blobs, not in this file.
+data.json
+data.json.tmp
+
+node_modules/
+.DS_Store

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BroQuest">
+<title>BroQuest</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+
+<div class="wrap">
+  <header class="topbar">
+    <h1>⚔️ BroQuest</h1>
+    <div class="top-actions">
+      <span id="clock" class="clock"></span>
+      <a id="parentBtn" class="icon-btn" href="parent.html" title="Parent controls">⚙️</a>
+      <button id="voiceBtn" class="icon-btn" title="Voice reminders"></button>
+      <button id="soundBtn" class="icon-btn" title="Sounds"></button>
+    </div>
+  </header>
+
+  <nav id="tabs" class="tabs"></nav>
+
+  <main id="board">
+    <section id="hero" class="hero hidden">
+      <div class="big-emoji">🦸</div>
+      <h2>BroQuest</h2>
+      <p>Add each brother and start earning points, leveling up and keeping those quests done!</p>
+      <button id="heroAdd" class="btn">Add a Bro 🚀</button>
+    </section>
+
+    <section id="boyCard" class="boy-card hidden"></section>
+
+    <form id="taskForm" class="task-form hidden" autocomplete="off">
+      <input id="titleInput" type="text" placeholder="Add a quest…" required>
+      <input id="pointsInput" type="number" min="1" max="100" value="10" title="Points">
+      <input id="timeInput" type="time" title="Remind time (optional)">
+      <label class="voice-on-task" title="Speak a reminder at that time"><input type="checkbox" id="remindCheck" checked>🔊</label>
+      <button id="addBtn" type="submit" title="Add quest">＋</button>
+    </form>
+
+    <ul id="taskList" class="tasks"></ul>
+
+    <section id="shop" class="shop hidden"></section>
+
+    <section id="doneSection" class="done-section hidden">
+      <h2>✅ Done</h2>
+      <ul id="doneList" class="tasks"></ul>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>New Quest Brother</h2>
+    <label>Bro's name <input id="newBoyName" type="text" maxlength="12" placeholder="e.g. Leo"></label>
+    <label>Pick an avatar</label>
+    <div id="avatarPicker" class="avatars"></div>
+    <div class="modal-actions">
+      <button id="cancelBoy" class="btn ghost" type="button">Cancel</button>
+      <button id="confirmBoy" class="btn" type="button">Add Bro</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

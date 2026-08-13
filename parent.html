@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BroQuest · Parent</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="parent.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar">
+    <h1>🛡️ BroQuest <span class="sub">Parent controls</span></h1>
+    <div class="top-actions">
+      <span id="syncNote" class="sync-note" title="Sync status">●</span>
+      <a class="icon-btn" href="index.html" title="Back to the boys">🏠</a>
+    </div>
+  </header>
+
+  <section id="pinScreen">
+    <div class="big-emoji">🔒</div>
+    <h2>Parent PIN</h2>
+    <p class="muted">The boys shouldn't be here 😉</p>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+    <p id="pinHint" class="pin-hint hidden">Wrong PIN. Try again.</p>
+    <button id="unlockBtn" class="btn">Unlock</button>
+  </section>
+
+  <div id="parentUI" class="hidden">
+
+    <section class="card">
+      <h2>👦 Boys</h2>
+      <div id="boyList"></div>
+      <div class="row">
+        <input id="newBoyName" type="text" maxlength="12" placeholder="Bro's name">
+        <button id="addBoyBtn" class="btn small">Add</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>📋 Quests</h2>
+      <div class="row">
+        <label class="muted lbl">For:</label>
+        <select id="boySelect"></select>
+      </div>
+      <div class="row">
+        <input id="pTitle" type="text" placeholder="Quest…">
+        <input id="pPoints" type="number" min="1" max="100" value="10" title="Points">
+        <input id="pTime" type="time" title="Remind time (optional)">
+        <label class="voice-on-task" title="Speak a reminder"><input type="checkbox" id="pRemind" checked>🔊</label>
+        <button id="pAddBtn" class="btn small">＋</button>
+      </div>
+      <ul id="taskList" class="tasks"></ul>
+    </section>
+
+    <section class="card">
+      <h2>🏆 Reward Shop</h2>
+      <p class="muted">Boys spend their points on these.</p>
+      <div class="row">
+        <input id="rEmoji" type="text" maxlength="4" placeholder="🎁" class="w-sm">
+        <input id="rName" type="text" placeholder="Reward, e.g. Movie night">
+        <input id="rCost" type="number" min="1" max="9999" value="200" title="Cost in points" class="w-sm">
+        <button id="rAddBtn" class="btn small">Add</button>
+      </div>
+      <div id="rewardList"></div>
+    </section>
+
+    <section class="card">
+      <h2>🎯 Goals</h2>
+      <p class="muted">When a boy reaches the target points, award the goal.</p>
+      <div class="row">
+        <label class="muted lbl">For:</label>
+        <select id="goalBoySelect"></select>
+      </div>
+      <div class="row">
+        <input id="gTitle" type="text" placeholder="Goal, e.g. New game">
+        <input id="gTarget" type="number" min="1" max="99999" value="1000" title="Target points" class="w-md">
+        <button id="gAddBtn" class="btn small">Add</button>
+      </div>
+      <div id="goalList"></div>
+    </section>
+
+    <section class="card">
+      <h2>⚙️ Settings</h2>
+      <div class="row">
+        <button id="voiceBtn" class="btn ghost"></button>
+        <button id="soundBtn" class="btn ghost"></button>
+      </div>
+      <div class="row">
+        <label class="muted lbl">New PIN:</label>
+        <input id="newPin" type="password" inputmode="numeric" maxlength="4" placeholder="4 digits" autocomplete="off">
+        <button id="savePinBtn" class="btn small">Save PIN</button>
+      </div>
+      <div class="row">
+        <button id="resetBtn" class="btn danger">Reset all data</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="parent.js"></script>
+</body>
+</html>
