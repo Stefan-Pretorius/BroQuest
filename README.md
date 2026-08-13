@@ -59,9 +59,16 @@ If there's no API at all (e.g. you host just the static files somewhere with no 
 - Manage **boys**, **quests** (add/complete/delete for any boy), the **reward shop**, per-boy **goals** (Award button when reached), and **settings** (voice/sound, PIN, reset).
 - Changes appear on the iPad within a few seconds.
 
+## Voice reminders — how it works
+
+- The iPad only talks after the **first tap anywhere** in the app (iOS rule). Tap once after loading, then the voice is unlocked for the session.
+- **Test it:** press the 🔊 Voice button in the top-right twice (first tap turns it off, second turns it on and it speaks a test line).
+- **Or:** add a quest and set a ⏰ reminder time — the iPad immediately says "Got it! I will remind you about … at 6:30 PM" and then speaks again at that time (and again, ~hourly, if it's 30+ min overdue and still not done).
+- Reminders only speak **while the page is open and the screen is on** — set **Settings → Display & Brightness → Auto-Lock → Never** on the iPad.
+- If you hear nothing: check the iPad's side mute switch, make sure the page is still open, and that voice didn't get turned off (button should read **🔊 Voice ON**).
+
 ## Things to know (iPad Air 1 / iOS 12 limits)
 
-- The iPad only announces while the page is open and the screen is on. Set **Settings → Display & Brightness → Auto-Lock → Never** so reminders keep coming.
 - Voice is a single global switch; reminders only fire for quests that have a time set.
 
 ## Files

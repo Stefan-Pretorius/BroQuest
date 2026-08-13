@@ -170,26 +170,64 @@
   }
 
   // ---------- speech (iOS needs priming after a tap) ----------
+  // iOS quirk: speech only works after a user gesture, the first real
+  // utterance must come a moment AFTER the unlock gesture, and the queue
+  // can silently stall. So we prime on the first tap (capture phase so it
+  // runs before any button handler), delay the first real utterance, and
+  // run everything through a watchdog-protected queue with cancel() resets.
+  var primeTime = 0;
+  var speakQueue = [];
+  var speaking = false;
   function primeSpeech() {
     if (primed || !('speechSynthesis' in window)) return;
     primed = true;
+    primeTime = Date.now();
     try {
+      window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(' ');
       u.volume = 1;
       window.speechSynthesis.speak(u);
       window.speechSynthesis.resume();
     } catch (e) {}
   }
-  function speakNow(text) {
-    if (!state.settings.voiceEnabled || !('speechSynthesis' in window)) return;
+  function flushQueue() {
+    if (speaking || !speakQueue.length) return;
+    var text = speakQueue.shift();
+    speaking = true;
+    var watchdog = setTimeout(function () { speaking = false; flushQueue(); }, Math.max(5000, text.length * 130));
     try {
+      window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
       u.volume = 1;  // iOS quirk: volume must be set or first utterance is silent
       u.rate = 0.95;
       u.pitch = 1.05;
+      var done = function () {
+        clearTimeout(watchdog);
+        speaking = false;
+        setTimeout(flushQueue, 150);
+      };
+      u.onend = done;
+      u.onerror = done;
       window.speechSynthesis.speak(u);
       window.speechSynthesis.resume();
-    } catch (e) {}
+    } catch (e) {
+      clearTimeout(watchdog);
+      speaking = false;
+      flushQueue();
+    }
+  }
+  function speakNow(text) {
+    if (!state.settings.voiceEnabled || !('speechSynthesis' in window)) return;
+    if (!primed) primeSpeech();
+    // iOS drops utterances spoken in the same instant as the unlock gesture;
+    // hold the first one back so the audio session has time to come up.
+    var age = Date.now() - primeTime;
+    if (age < 600) {
+      setTimeout(function () { speakNow(text); }, 700 - age);
+      return;
+    }
+    if (speakQueue.length < 8) speakQueue.push(String(text));
+    flushQueue();
   }
 
   // ---------- confetti ----------
@@ -292,6 +330,14 @@
   }
 
   // ---------- tasks ----------
+  function speakTime(hm) {
+    var p = hm.split(':');
+    var h = +p[0];
+    var m = +p[1];
+    var ap = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12 || 12;
+    return h12 + (m ? ':' + pad(m) : '') + ' ' + ap;
+  }
   function addTask() {
     var title = el.titleInput.value.trim();
     if (!title) return;
@@ -299,9 +345,10 @@
     if (isNaN(pts) || pts < 1) pts = 10;
     if (pts > 100) pts = 100;
     var at = el.timeInput.value || null;
+    var willSpeak = !!(at && el.remindCheck.checked);
     state.tasks.push({
       id: uid(), boyId: state.activeBoyId, title: title, done: false,
-      points: pts, remindAt: at, remindEnabled: !!(at && el.remindCheck.checked),
+      points: pts, remindAt: at, remindEnabled: willSpeak,
       createdAt: Date.now(), completedAt: null, lastAnnounced: null, lastOverdueAt: null
     });
     el.titleInput.value = '';
@@ -310,6 +357,9 @@
     saveState();
     render();
     sfxAdd();
+    if (willSpeak) {
+      speakNow('Got it! I will remind you about ' + title + ' at ' + speakTime(at) + '.');
+    }
     el.titleInput.focus();
   }
   function toggleTask(id, x, y) {
@@ -376,7 +426,7 @@
     state.settings.voiceEnabled = !state.settings.voiceEnabled;
     saveState();
     render();
-    if (state.settings.voiceEnabled) speakNow('Voice reminders are on.');
+    if (state.settings.voiceEnabled) speakNow('Voice reminders are on! This is BroQuest speaking. Add a time to a quest and I will remind you.');
   }
   function toggleSound() {
     state.settings.soundEnabled = !state.settings.soundEnabled;
@@ -429,7 +479,7 @@
   // ---------- render ----------
   function render() {
     var boy = boyById(state.activeBoyId);
-    el.voiceBtn.textContent = state.settings.voiceEnabled ? '🔊' : '🔇';
+    el.voiceBtn.textContent = state.settings.voiceEnabled ? '🔊 Voice ON' : '🔇 Voice OFF';
     el.voiceBtn.title = state.settings.voiceEnabled ? 'Voice reminders ON' : 'Voice reminders OFF';
     el.soundBtn.textContent = state.settings.soundEnabled ? '🎵' : '🚫';
     el.soundBtn.title = state.settings.soundEnabled ? 'Sounds ON' : 'Sounds OFF';
@@ -639,14 +689,25 @@
   el.heroAdd.addEventListener('click', openModal);
   el.newBoyName.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') confirmBoyAdd(); });
 
-  // iOS: unlock audio + speech on the first tap anywhere
-  document.addEventListener('click', function () { primeSpeech(); initAudio(); }, { once: true });
+  // iOS: unlock audio + speech on the very first touch/click (capture phase,
+  // so priming runs before any button handler on that first tap)
+  function primeGesture() { primeSpeech(); initAudio(); }
+  document.addEventListener('touchstart', primeGesture, { capture: true, once: true });
+  document.addEventListener('click', primeGesture, { capture: true, once: true });
 
   // ---------- boot ----------
   setInterval(tickClock, 1000);
   function tickClock() { el.clock.textContent = hhmm(new Date()); }
   render();
   if (!state.boys.length) setTimeout(openModal, 300);
+
+  // one-time hint: iOS only unlocks speech/sound after the first tap
+  if (state.settings.voiceEnabled && !localStorage.getItem('bro_quest_hint')) {
+    localStorage.setItem('bro_quest_hint', '1');
+    setTimeout(function () {
+      toast('👆 Tap anywhere once to unlock voice & sounds (iOS rule) — then press 🔊 Voice to hear it.');
+    }, 1500);
+  }
 
   // keep in sync with the server (parent page, other devices)
   syncPoll();
