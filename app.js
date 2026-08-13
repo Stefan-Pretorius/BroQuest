@@ -33,7 +33,11 @@
     if (!s.tasks) s.tasks = [];
     if (!s.rewards) s.rewards = [];
     if (!s.goals) s.goals = [];
-    s.settings = Object.assign({ voiceEnabled: true, soundEnabled: true, pin: '2468' }, s.settings || {});
+    s.settings = {
+      voiceEnabled: !s.settings || s.settings.voiceEnabled !== false,
+      soundEnabled: !s.settings || s.settings.soundEnabled !== false,
+      pin: (s.settings && s.settings.pin) || '2468'
+    };
     if (!s.version) s.version = 0;
     if (!s.activeBoyId) s.activeBoyId = null;
     return s;
@@ -51,14 +55,27 @@
     syncPush();
   }
 
-  // ---------- server sync ----------
+  // ---------- server sync (XHR — fetch doesn't exist on iOS 9) ----------
+  function httpRequest(method, url, body, onOk, onErr) {
+    var xhr;
+    try { xhr = new XMLHttpRequest(); } catch (e) { if (onErr) onErr(e); return; }
+    xhr.open(method, url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (e) {}
+        if (onOk) onOk(data);
+      } else if (onErr) {
+        onErr(new Error('HTTP ' + xhr.status));
+      }
+    };
+    try { xhr.send(body ? body : null); } catch (e) { if (onErr) onErr(e); }
+  }
   function pushNow() {
     clearTimeout(pushTimer);
-    fetch('/api/state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: state })
-    }).catch(function () {});
+    httpRequest('POST', '/api/state', JSON.stringify({ state: state }), function () {}, function () {});
   }
   function syncPush() {
     clearTimeout(pushTimer);
@@ -83,17 +100,15 @@
     });
   }
   function syncPoll() {
-    fetch('/api/state', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (s) {
-        s = normalizeState(s);
-        if (s.version > serverVersion) {
-          adoptServer(s);
-        } else if (s.version === 0 && state.version > 0) {
-          pushNow();
-        }
-      })
-      .catch(function () {});
+    httpRequest('GET', '/api/state', null, function (s) {
+      if (!s) return;
+      s = normalizeState(s);
+      if (s.version > serverVersion) {
+        adoptServer(s);
+      } else if (s.version === 0 && state.version > 0) {
+        pushNow();
+      }
+    }, function () {});
   }
   function uid() { return 'id' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -669,17 +684,26 @@
   }
 
   // ---------- events ----------
+  // iOS 9 has no Element.closest — walk up the parents by attribute instead.
+  function parentWithAttr(node, attr) {
+    var n = node;
+    while (n && n.getAttribute) {
+      if (n.getAttribute(attr) !== null) return n;
+      n = n.parentNode;
+    }
+    return null;
+  }
   el.tabs.addEventListener('click', function (ev) {
     var target = ev.target;
-    var boyTab = target.closest ? target.closest('[data-boy]') : null;
+    var boyTab = parentWithAttr(target, 'data-boy');
     if (boyTab) {
       state.activeBoyId = boyTab.getAttribute('data-boy');
       saveState();
       render();
       return;
     }
-    var addBtn = target.closest ? target.closest('#addBoyBtn') : null;
-    if (addBtn || target.id === 'addBoyBtn') openModal();
+    var addBtn = parentWithAttr(target, 'id');
+    if ((addBtn && addBtn.id === 'addBoyBtn') || target.id === 'addBoyBtn') openModal();
   });
   el.taskForm.addEventListener('submit', function (ev) { ev.preventDefault(); addTask(); });
   el.voiceBtn.addEventListener('click', toggleVoice);

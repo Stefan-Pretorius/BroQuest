@@ -31,7 +31,11 @@
     if (!s.tasks) s.tasks = [];
     if (!s.rewards) s.rewards = [];
     if (!s.goals) s.goals = [];
-    s.settings = Object.assign({ voiceEnabled: true, soundEnabled: true, pin: '2468' }, s.settings || {});
+    s.settings = {
+      voiceEnabled: !s.settings || s.settings.voiceEnabled !== false,
+      soundEnabled: !s.settings || s.settings.soundEnabled !== false,
+      pin: (s.settings && s.settings.pin) || '2468'
+    };
     if (!s.version) s.version = 0;
     if (!s.activeBoyId) s.activeBoyId = null;
     return s;
@@ -51,22 +55,32 @@
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
   }
 
-  // ---------- sync ----------
+  // ---------- sync (XHR — fetch doesn't exist on iOS 9) ----------
   function setOnline() { el.syncNote.className = 'sync-note online'; }
   function setOffline() { el.syncNote.className = 'sync-note offline'; }
+  function httpRequest(method, url, body, onOk, onErr) {
+    var xhr;
+    try { xhr = new XMLHttpRequest(); } catch (e) { if (onErr) onErr(e); return; }
+    xhr.open(method, url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (e) {}
+        if (onOk) onOk(data);
+      } else if (onErr) {
+        onErr(new Error('HTTP ' + xhr.status));
+      }
+    };
+    try { xhr.send(body ? body : null); } catch (e) { if (onErr) onErr(e); }
+  }
   function fetchState(cb) {
-    fetch('/api/state', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (s) { cb(normalizeState(s)); })
-      .catch(function () { cb(null); });
+    httpRequest('GET', '/api/state', null, function (s) { cb(normalizeState(s)); }, function () { cb(null); });
   }
   function pushNow() {
     clearTimeout(pushTimer);
-    fetch('/api/state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: state })
-    }).then(setOnline).catch(setOffline);
+    httpRequest('POST', '/api/state', JSON.stringify({ state: state }), setOnline, setOffline);
   }
   function syncPush() {
     clearTimeout(pushTimer);
