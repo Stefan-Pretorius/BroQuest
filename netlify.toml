@@ -11,3 +11,9 @@
   to = "/.netlify/functions/state"
   status = 200
   force = true
+
+# Never let old iOS (which caches aggressively) keep a stale page or script.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
