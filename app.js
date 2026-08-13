@@ -79,13 +79,50 @@
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushNow, 500);
   }
+  function isEmptyState(s) {
+    return s && !s.boys.length && !s.tasks.length && !s.rewards.length && !s.goals.length;
+  }
+  function mergeById(a, b) {
+    var map = {}, out = [], k;
+    a.forEach(function (x) { if (x && x.id) map[x.id] = x; });
+    b.forEach(function (x) { if (x && x.id) map[x.id] = x; });
+    for (k in map) { if (Object.prototype.hasOwnProperty.call(map, k)) out.push(map[k]); }
+    return out;
+  }
+  function mergeFrom(s) {
+    state.boys = mergeById(state.boys, s.boys);
+    state.tasks = mergeById(state.tasks, s.tasks);
+    state.rewards = mergeById(state.rewards, s.rewards);
+    state.goals = mergeById(state.goals, s.goals);
+    if (s.settings) {
+      state.settings.voiceEnabled = s.settings.voiceEnabled;
+      state.settings.soundEnabled = s.settings.soundEnabled;
+      if (s.settings.pin !== '2468') state.settings.pin = s.settings.pin;
+    }
+    if (s.activeBoyId) state.activeBoyId = s.activeBoyId;
+    state.version = Math.max(state.version || 0, s.version || 0);
+  }
   function adoptServer(s) {
     var prev = {};
     state.goals.forEach(function (g) { prev[g.id] = !!g.awarded; });
-    state = normalizeState(s);
-    serverVersion = state.version || 0;
+    s = normalizeState(s);
+    if (isEmptyState(s)) {
+      if (s.version > 0) {
+        state = s;
+      } else {
+        // server lost its data (cold start / blobs unavailable): keep local
+        // copy and heal the server back up — never wipe the device.
+        serverVersion = state.version;
+        pushNow();
+        return;
+      }
+    } else {
+      mergeFrom(s);
+    }
+    serverVersion = state.version;
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     render();
+    pushNow();
     state.goals.forEach(function (g) {
       if (g.awarded && prev[g.id] !== true && prev[g.id] !== undefined) {
         var boy = boyById(g.boyId);

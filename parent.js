@@ -92,22 +92,53 @@
     render();
     syncPush();
   }
-  function adoptServer(s) {
-    state = normalizeState(s);
-    serverVersion = state.version || 0;
+  function isEmptyState(s) {
+    return s && !s.boys.length && !s.tasks.length && !s.rewards.length && !s.goals.length;
+  }
+  function mergeById(a, b) {
+    var map = {}, out = [], k;
+    a.forEach(function (x) { if (x && x.id) map[x.id] = x; });
+    b.forEach(function (x) { if (x && x.id) map[x.id] = x; });
+    for (k in map) { if (Object.prototype.hasOwnProperty.call(map, k)) out.push(map[k]); }
+    return out;
+  }
+  function mergeFrom(s) {
+    state.boys = mergeById(state.boys, s.boys);
+    state.tasks = mergeById(state.tasks, s.tasks);
+    state.rewards = mergeById(state.rewards, s.rewards);
+    state.goals = mergeById(state.goals, s.goals);
+    if (s.settings) {
+      state.settings.voiceEnabled = s.settings.voiceEnabled;
+      state.settings.soundEnabled = s.settings.soundEnabled;
+      if (s.settings.pin !== '2468') state.settings.pin = s.settings.pin;
+    }
+    if (s.activeBoyId) state.activeBoyId = s.activeBoyId;
+    state.version = Math.max(state.version || 0, s.version || 0);
+  }
+  function handleServer(s) {
+    if (!s) { setOffline(); render(); return; }
+    setOnline();
+    s = normalizeState(s);
+    if (isEmptyState(s)) {
+      if (s.version > 0) {
+        state = s;
+      } else if (state.version > 0) {
+        // server lost its data (cold start / blobs unavailable): keep our
+        // local copy and heal the server back up — never wipe the family's data.
+        pushNow();
+        return;
+      } else {
+        return;
+      }
+    } else {
+      mergeFrom(s);
+    }
+    serverVersion = state.version;
     writeCache();
     render();
   }
   function poll() {
-    fetchState(function (s) {
-      if (!s) { setOffline(); return; }
-      setOnline();
-      if (s.version > serverVersion) {
-        adoptServer(s);
-      } else if (s.version === 0 && state.version > 0) {
-        pushNow();
-      }
-    });
+    fetchState(handleServer);
   }
 
   // ---------- PIN ----------
@@ -118,7 +149,6 @@
       el.pinHint.classList.add('hidden');
       el.pinInput.value = '';
       poll();
-      setInterval(poll, 8000);
     } else {
       el.pinHint.classList.remove('hidden');
       el.pinInput.value = '';
@@ -392,19 +422,12 @@
   });
 
   // ---------- boot ----------
+  // Load the local copy first so a refresh or offline open never shows (or
+  // worse, writes back) an empty state. Then sync with the server.
   var cached = loadCache();
-  fetchState(function (s) {
-    if (s) {
-      state = s;
-      serverVersion = s.version || 0;
-      setOnline();
-    } else {
-      setOffline();
-      if (cached) {
-        state = cached;
-        serverVersion = cached.version || 0;
-      }
-    }
-    render();
-  });
+  if (cached) { state = cached; serverVersion = cached.version || 0; }
+  fetchState(handleServer);
+  setInterval(function () {
+    if (!el.parentUI.classList.contains('hidden')) poll();
+  }, 8000);
 })();

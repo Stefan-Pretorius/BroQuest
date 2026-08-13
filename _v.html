@@ -7,17 +7,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BroQuest">
 <title>BroQuest</title>
-<link rel="apple-touch-icon" href="icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<canvas id="fx"></canvas>
 
 <div class="wrap">
   <header class="topbar">
     <h1>⚔️ BroQuest</h1>
     <div class="top-actions">
       <span id="clock" class="clock"></span>
-      <a id="parentBtn" class="icon-btn" href="parent.html" title="Parent controls">⚙️</a>
+      <a class='icon-btn' href='/parent' id='parentBtn' title='Parent controls'>⚙️</a>
       <button id="voiceBtn" class="icon-btn" title="Voice reminders"></button>
       <button id="soundBtn" class="icon-btn" title="Sounds"></button>
     </div>
@@ -26,7 +27,7 @@
   <nav id="tabs" class="tabs"></nav>
 
   <main id="board">
-    <section id="hero" class="hero">
+    <section id="hero" class="hero hidden">
       <div class="big-emoji">🦸</div>
       <h2>BroQuest</h2>
       <p>Add each brother and start earning points, leveling up and keeping those quests done!</p>
