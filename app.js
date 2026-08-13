@@ -12,8 +12,6 @@
   var selectedAvatar = AVATARS[0];
   var actx = null;
   var primed = false;
-  var parts = [];
-  var fxRunning = false;
   var toastTimer = null;
 
   // ---------- dom refs ----------
@@ -245,54 +243,30 @@
     flushQueue();
   }
 
-  // ---------- confetti ----------
-  var fx = document.getElementById('fx');
-  var fctx = fx.getContext('2d');
-  function sizeFx() { fx.width = window.innerWidth; fx.height = window.innerHeight; }
-  window.addEventListener('resize', sizeFx);
-  sizeFx();
+  // ---------- confetti (DOM bits — a full-screen fixed <canvas> can blank
+  // the page on old iOS, so we never put one over the content) ----------
   function burst(x, y, n) {
     var colors = ['#ff4d6d', '#ff9f1c', '#ffd166', '#2ec4b6', '#9b5de5', '#00bbf9', '#f15bb5'];
-    for (var i = 0; i < n; i++) {
-      parts.push({
-        x: x, y: y,
-        vx: (Math.random() * 2 - 1) * 9,
-        vy: (Math.random() * 2 - 1) * 9 - 4,
-        life: 1,
-        color: colors[(Math.random() * colors.length) | 0],
-        size: 4 + Math.random() * 5,
-        rot: Math.random() * Math.PI * 2,
-        vr: (Math.random() * 2 - 1) * 0.25
-      });
-    }
-    if (!fxRunning) { fxRunning = true; requestAnimationFrame(fxTick); }
-  }
-  function fxTick() {
-    fctx.clearRect(0, 0, fx.width, fx.height);
-    var still = [];
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i];
-      p.vy += 0.16;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.rot += p.vr;
-      p.life -= 0.012;
-      if (p.life <= 0 || p.y > fx.height + 30) continue;
-      fctx.save();
-      fctx.translate(p.x, p.y);
-      fctx.rotate(p.rot);
-      fctx.globalAlpha = Math.max(0, p.life);
-      fctx.fillStyle = p.color;
-      fctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
-      fctx.restore();
-      still.push(p);
-    }
-    parts = still;
-    if (parts.length) {
-      requestAnimationFrame(fxTick);
-    } else {
-      fxRunning = false;
-      fctx.clearRect(0, 0, fx.width, fx.height);
+    var count = Math.min(n, 26);
+    for (var i = 0; i < count; i++) {
+      var d = document.createElement('div');
+      d.className = 'fx-bit';
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.background = colors[(Math.random() * colors.length) | 0];
+      var tx = (Math.random() * 160 - 80);
+      var ty = (Math.random() * 160 - 40) + 40;
+      var deg = (Math.random() * 720 - 360) | 0;
+      (function (node) {
+        setTimeout(function () {
+          node.style.webkitTransition = 'transform .75s ease-out, opacity .75s ease-out';
+          node.style.webkitTransform = 'translate(' + tx + 'px,' + ty + 'px) rotate(' + deg + 'deg)';
+          node.style.opacity = '0';
+        }, 10);
+        setTimeout(function () {
+          if (node.parentNode) node.parentNode.removeChild(node);
+        }, 820);
+      })(d);
     }
   }
   function floatPts(x, y, text) {
@@ -723,7 +697,6 @@
   setInterval(tickClock, 1000);
   function tickClock() { el.clock.textContent = hhmm(new Date()); }
   render();
-  if (!state.boys.length) setTimeout(openModal, 300);
 
   // one-time hint: iOS only unlocks speech/sound after the first tap
   if (state.settings.voiceEnabled && !localStorage.getItem('bro_quest_hint')) {

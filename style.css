@@ -11,14 +11,6 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-#fx {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 90;
-}
-
 .wrap {
   max-width: 860px;
   margin: 0 auto;
@@ -381,6 +373,14 @@ body {
 }
 
 /* ---------- fx ---------- */
+.fx-bit {
+  position: fixed;
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 95;
+  opacity: 1;
+}
 .float-pts {
   position: fixed;
   font-size: 24px;
