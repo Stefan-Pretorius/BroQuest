@@ -2,6 +2,7 @@
   'use strict';
 
   var LS_KEY = 'bro_quest_v1';
+  var synced = false;
   function dlog(msg) {
     try {
       var arr = JSON.parse(localStorage.getItem('bq_log') || '[]');
@@ -26,7 +27,7 @@
 
   // ---------- dom refs ----------
   var el = {};
-  ['tabs', 'clock', 'voiceBtn', 'soundBtn', 'board', 'hero', 'heroAdd', 'boyCard',
+  ['tabs', 'clock', 'voiceBtn', 'soundBtn', 'board', 'hero', 'heroAdd', 'syncMsg', 'boyCard',
    'taskForm', 'titleInput', 'pointsInput', 'timeInput', 'remindCheck', 'addBtn',
    'taskList', 'shop', 'doneSection', 'doneList', 'toast', 'modal', 'newBoyName', 'avatarPicker',
    'cancelBoy', 'confirmBoy'].forEach(function (id) { el[id] = document.getElementById(id); });
@@ -119,12 +120,14 @@
     var prev = {};
     state.goals.forEach(function (g) { prev[g.id] = !!g.awarded; });
     s = normalizeState(s);
+    synced = true;
     if (isEmptyState(s)) {
       // Never adopt an empty state — it would wipe all the family's data.
       // If the server is empty (cold start / blobs unavailable), keep our
       // local copy and heal the server back up instead.
       dlog('sync EMPTY server -> heal local b=' + state.boys.length + ' t=' + state.tasks.length);
       if (state.version > 0) pushNow();
+      render();
       return;
     }
     var before = JSON.stringify(state);
@@ -133,9 +136,9 @@
     if (JSON.stringify(state) !== before) {
       dlog('sync merged server b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
       try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-      render();
       pushNow();
     }
+    render();
     state.goals.forEach(function (g) {
       if (g.awarded && prev[g.id] !== true && prev[g.id] !== undefined) {
         var boy = boyById(g.boyId);
@@ -545,6 +548,14 @@
     el.soundBtn.title = state.settings.soundEnabled ? 'Sounds ON' : 'Sounds OFF';
     renderTabs();
     if (!boy) {
+      var loading = !synced && state.boys.length === 0;
+      if (loading) {
+        el.syncMsg.classList.remove('hidden');
+        el.heroAdd.classList.add('hidden');
+      } else {
+        el.syncMsg.classList.add('hidden');
+        el.heroAdd.classList.remove('hidden');
+      }
       el.hero.classList.remove('hidden');
       el.boyCard.classList.add('hidden');
       el.taskForm.classList.add('hidden');
@@ -778,6 +789,7 @@
   }
 
   // keep in sync with the server (parent page, other devices)
+  setTimeout(function () { if (!synced) { synced = true; render(); } }, 4000);
   syncPoll();
   setInterval(syncPoll, 8000);
   window.addEventListener('pagehide', pushNow);
