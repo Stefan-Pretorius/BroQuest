@@ -125,11 +125,11 @@
       // If the server is empty (cold start / blobs unavailable), keep our
       // local copy and heal the server back up instead.
       if (state.version > 0) pushNow();
-      return;
+    } else {
+      mergeFrom(s);
+      serverVersion = state.version;
+      writeCache();
     }
-    mergeFrom(s);
-    serverVersion = state.version;
-    writeCache();
     render();
   }
   function poll() {
@@ -426,6 +426,7 @@
   // worse, writes back) an empty state. Then sync with the server.
   var cached = loadCache();
   if (cached) { state = cached; serverVersion = cached.version || 0; }
+  render();
   fetchState(handleServer);
   setInterval(function () {
     if (!el.parentUI.classList.contains('hidden')) poll();
