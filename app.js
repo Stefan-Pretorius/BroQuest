@@ -3,6 +3,7 @@
 
   var LS_KEY = 'bro_quest_v1';
   var synced = false;
+  var offline = false;
   function dlog(msg) {
     try {
       var arr = JSON.parse(localStorage.getItem('bq_log') || '[]');
@@ -121,6 +122,7 @@
     state.goals.forEach(function (g) { prev[g.id] = !!g.awarded; });
     s = normalizeState(s);
     synced = true;
+    offline = false;
     if (isEmptyState(s)) {
       // Never adopt an empty state — it would wipe all the family's data.
       // If the server is empty (cold start / blobs unavailable), keep our
@@ -152,9 +154,20 @@
   }
   function syncPoll() {
     httpRequest('GET', '/api/state', null, function (s) {
-      if (!s) return;
+      if (!s) {
+        offline = true;
+        synced = true;
+        el.syncMsg.textContent = '⚠ Bad response from server — retrying…';
+        render();
+        return;
+      }
       adoptServer(normalizeState(s));
-    }, function () {});
+    }, function (err) {
+      offline = true;
+      synced = true;
+      el.syncMsg.textContent = "📶 Can't reach server (" + err.message + ') — retrying…';
+      render();
+    });
   }
   function uid() { return 'id' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -549,7 +562,11 @@
     renderTabs();
     if (!boy) {
       var loading = !synced && state.boys.length === 0;
-      if (loading) {
+      if (offline) {
+        el.syncMsg.classList.remove('hidden');
+        el.heroAdd.classList.remove('hidden');
+      } else if (loading) {
+        el.syncMsg.textContent = 'Connecting to server…';
         el.syncMsg.classList.remove('hidden');
         el.heroAdd.classList.add('hidden');
       } else {
@@ -789,7 +806,14 @@
   }
 
   // keep in sync with the server (parent page, other devices)
-  setTimeout(function () { if (!synced) { synced = true; render(); } }, 4000);
+  setTimeout(function () {
+    if (!synced) {
+      synced = true;
+      offline = true;
+      el.syncMsg.textContent = "📶 Can't reach server — retrying…";
+      render();
+    }
+  }, 4000);
   syncPoll();
   setInterval(syncPoll, 8000);
   window.addEventListener('pagehide', pushNow);
