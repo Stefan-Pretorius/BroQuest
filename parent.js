@@ -2,11 +2,11 @@
   'use strict';
 
   var AVATARS = ['🦁', '🐺', '🦅', '🐯', '🦈', '🐲', '🚀', '⚡', '🏀', '🎮', '🥷', '🤖', '🔥', '💪'];
-  var LS_KEY = 'bro_quest_parent';
+  var LS_KEY = 'bro_quest_v1';
 
   var state = {
     version: 0, boys: [], tasks: [], rewards: [], goals: [],
-    settings: { voiceEnabled: true, soundEnabled: true, pin: '2468' },
+    settings: { voiceEnabled: true, soundEnabled: true, pin: '2468', voiceGender: 'woman' },
     activeBoyId: null
   };
   var serverVersion = 0;
@@ -16,7 +16,7 @@
   ['pinScreen', 'pinInput', 'pinHint', 'unlockBtn', 'parentUI', 'boyList', 'newBoyName', 'addBoyBtn',
    'boySelect', 'goalBoySelect', 'pTitle', 'pPoints', 'pTime', 'pRemind', 'pAddBtn', 'taskList',
    'rEmoji', 'rName', 'rCost', 'rAddBtn', 'rewardList', 'gTitle', 'gTarget', 'gAddBtn', 'goalList',
-   'voiceBtn', 'soundBtn', 'newPin', 'savePinBtn', 'resetBtn', 'syncNote'].forEach(function (id) {
+   'voiceBtn', 'soundBtn', 'voiceGenderBtn', 'newPin', 'savePinBtn', 'resetBtn', 'syncNote'].forEach(function (id) {
     el[id] = document.getElementById(id);
   });
 
@@ -34,7 +34,8 @@
     s.settings = {
       voiceEnabled: !s.settings || s.settings.voiceEnabled !== false,
       soundEnabled: !s.settings || s.settings.soundEnabled !== false,
-      pin: (s.settings && s.settings.pin) || '2468'
+      pin: (s.settings && s.settings.pin) || '2468',
+      voiceGender: (s.settings && s.settings.voiceGender) || 'woman'
     };
     if (!s.version) s.version = 0;
     if (!s.activeBoyId) s.activeBoyId = null;
@@ -120,19 +121,13 @@
     setOnline();
     s = normalizeState(s);
     if (isEmptyState(s)) {
-      if (s.version > 0) {
-        state = s;
-      } else if (state.version > 0) {
-        // server lost its data (cold start / blobs unavailable): keep our
-        // local copy and heal the server back up — never wipe the family's data.
-        pushNow();
-        return;
-      } else {
-        return;
-      }
-    } else {
-      mergeFrom(s);
+      // Never adopt an empty state — it would wipe all the family's data.
+      // If the server is empty (cold start / blobs unavailable), keep our
+      // local copy and heal the server back up instead.
+      if (state.version > 0) pushNow();
+      return;
     }
+    mergeFrom(s);
     serverVersion = state.version;
     writeCache();
     render();
@@ -385,6 +380,7 @@
   function renderSettings() {
     el.voiceBtn.textContent = '🔊 Voice reminders: ' + (state.settings.voiceEnabled ? 'ON' : 'OFF');
     el.soundBtn.textContent = '🎵 Sounds: ' + (state.settings.soundEnabled ? 'ON' : 'OFF');
+    el.voiceGenderBtn.textContent = '🗣 Voice: ' + (state.settings.voiceGender === 'man' ? 'Man 👨' : 'Woman 👩');
   }
   function savePin() {
     var v = el.newPin.value.trim();
@@ -414,6 +410,10 @@
   el.goalBoySelect.addEventListener('change', function () { el.boySelect.value = el.goalBoySelect.value; renderTasks(); renderGoals(); });
   el.voiceBtn.addEventListener('click', function () { state.settings.voiceEnabled = !state.settings.voiceEnabled; save(); });
   el.soundBtn.addEventListener('click', function () { state.settings.soundEnabled = !state.settings.soundEnabled; save(); });
+  el.voiceGenderBtn.addEventListener('click', function () {
+    state.settings.voiceGender = state.settings.voiceGender === 'man' ? 'woman' : 'man';
+    save();
+  });
   el.savePinBtn.addEventListener('click', savePin);
   el.resetBtn.addEventListener('click', function () {
     if (!window.confirm('Delete ALL boys, quests, rewards and goals?')) return;

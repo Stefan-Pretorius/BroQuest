@@ -23,7 +23,7 @@
 
   // ---------- state ----------
   function defaultState() {
-    return { version: 0, boys: [], tasks: [], rewards: [], goals: [], settings: { voiceEnabled: true, soundEnabled: true, pin: '2468' }, activeBoyId: null };
+    return { version: 0, boys: [], tasks: [], rewards: [], goals: [], settings: { voiceEnabled: true, soundEnabled: true, pin: '2468', voiceGender: 'woman' }, activeBoyId: null };
   }
   function normalizeState(s) {
     s = s || {};
@@ -34,7 +34,8 @@
     s.settings = {
       voiceEnabled: !s.settings || s.settings.voiceEnabled !== false,
       soundEnabled: !s.settings || s.settings.soundEnabled !== false,
-      pin: (s.settings && s.settings.pin) || '2468'
+      pin: (s.settings && s.settings.pin) || '2468',
+      voiceGender: (s.settings && s.settings.voiceGender) || 'woman'
     };
     if (!s.version) s.version = 0;
     if (!s.activeBoyId) s.activeBoyId = null;
@@ -107,18 +108,14 @@
     state.goals.forEach(function (g) { prev[g.id] = !!g.awarded; });
     s = normalizeState(s);
     if (isEmptyState(s)) {
-      if (s.version > 0) {
-        state = s;
-      } else {
-        // server lost its data (cold start / blobs unavailable): keep local
-        // copy and heal the server back up — never wipe the device.
-        serverVersion = state.version;
-        pushNow();
-        return;
-      }
-    } else {
-      mergeFrom(s);
+      // Never adopt an empty state — it would wipe all the family's data.
+      // If the server is empty (cold start / blobs unavailable), keep our
+      // local copy and heal the server back up instead.
+      serverVersion = state.version;
+      pushNow();
+      return;
     }
+    mergeFrom(s);
     serverVersion = state.version;
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     render();
@@ -240,6 +237,24 @@
       window.speechSynthesis.resume();
     } catch (e) {}
   }
+  function pickVoice(wantMan) {
+    try {
+      var vs = window.speechSynthesis.getVoices();
+      if (!vs || !vs.length) return null;
+      var i, n;
+      for (i = 0; i < vs.length; i++) {
+        n = vs[i].name.toLowerCase();
+        if (wantMan && n.indexOf('daniel') >= 0) return vs[i];
+        if (!wantMan && (n.indexOf('samantha') >= 0 || n.indexOf('victoria') >= 0)) return vs[i];
+      }
+      for (i = 0; i < vs.length; i++) {
+        n = vs[i].name.toLowerCase();
+        if (wantMan && n.indexOf('male') >= 0) return vs[i];
+        if (!wantMan && n.indexOf('female') >= 0) return vs[i];
+      }
+    } catch (e) {}
+    return null;
+  }
   function flushQueue() {
     if (speaking || !speakQueue.length) return;
     var text = speakQueue.shift();
@@ -251,6 +266,8 @@
       u.volume = 1;  // iOS quirk: volume must be set or first utterance is silent
       u.rate = 0.95;
       u.pitch = 1.05;
+      var pick = pickVoice(state.settings.voiceGender === 'man');
+      if (pick) u.voice = pick;
       var done = function () {
         clearTimeout(watchdog);
         speaking = false;
@@ -367,6 +384,11 @@
   function addTask() {
     var title = el.titleInput.value.trim();
     if (!title) return;
+    var hr = new Date().getHours();
+    if (hr >= 22 || hr < 6) {
+      toast('😴 Quest time is 6 AM – 10 PM. Go to sleep, bro!');
+      return;
+    }
     var pts = parseInt(el.pointsInput.value, 10);
     if (isNaN(pts) || pts < 1) pts = 10;
     if (pts > 100) pts = 100;
@@ -409,7 +431,8 @@
           }
         });
         saveState();
-        burst(x, y, 70);
+        burst(x, y, 80);
+        setTimeout(function () { burst(x, y, 60); }, 240);
         sfxComplete();
         floatPts(x, y - 10, '+' + t.points);
         bounceAvatar();

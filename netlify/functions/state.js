@@ -6,7 +6,7 @@ const DEFAULT_STATE = {
   tasks: [],
   rewards: [],
   goals: [],
-  settings: { voiceEnabled: true, soundEnabled: true, pin: '2468' },
+  settings: { voiceEnabled: true, soundEnabled: true, pin: '2468', voiceGender: 'woman' },
   activeBoyId: null
 };
 
