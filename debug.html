@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BroQuest Debug</title>
+<style>body{background:#0f1220;color:#eef1ff;font-family:monospace;padding:16px;font-size:14px}pre{white-space:pre-wrap;word-break:break-all}h2{font-size:16px;margin:20px 0 6px}</style>
+</head>
+<body>
+<h1>BroQuest debug</h1>
+<div id="out">Loading…</div>
+<script>
+(function () {
+  var out = document.getElementById('out');
+  function esc(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return 'ERROR: ' + e.message; } }
+  var html = '';
+  var raw = get('bro_quest_v1');
+  html += '<h2>bro_quest_v1 (device copy)</h2><pre>';
+  if (!raw) {
+    html += 'NOT SET';
+  } else {
+    try {
+      var d = JSON.parse(raw);
+      html += 'version: ' + d.version + '\n';
+      html += 'boys (' + d.boys.length + '): ' + d.boys.map(function (b) { return b.name; }).join(', ') + '\n';
+      html += 'tasks (' + d.tasks.length + '): ' + d.tasks.map(function (t) { return t.title; }).join(', ') + '\n';
+      html += 'rewards (' + d.rewards.length + '), goals (' + d.goals.length + ')\n';
+      html += 'activeBoyId: ' + d.activeBoyId + '\n';
+      html += '\nraw:\n' + esc(raw);
+    } catch (e) {
+      html += 'parse error: ' + esc(e.message) + '\n' + esc(raw);
+    }
+  }
+  html += '</pre>';
+  var log = get('bq_log');
+  html += '<h2>bq_log (last events)</h2><pre>';
+  if (!log) {
+    html += 'empty';
+  } else {
+    try {
+      html += JSON.parse(log).map(function (e) { return esc(e); }).join('\n');
+    } catch (e) {
+      html += esc(log);
+    }
+  }
+  html += '</pre>';
+  out.innerHTML = html;
+})();
+</script>
+</body>
+</html>

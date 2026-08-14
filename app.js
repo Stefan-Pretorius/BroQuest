@@ -2,11 +2,21 @@
   'use strict';
 
   var LS_KEY = 'bro_quest_v1';
+  function dlog(msg) {
+    try {
+      var arr = JSON.parse(localStorage.getItem('bq_log') || '[]');
+      arr.push(new Date().toISOString().slice(11, 19) + ' ' + msg);
+      while (arr.length > 30) arr.shift();
+      localStorage.setItem('bq_log', JSON.stringify(arr));
+    } catch (e) {}
+  }
+  window.onerror = function (msg, src, line) { dlog('ERR ' + msg + ' ' + (src || '') + ':' + (line || '')); };
   var PALETTE = ['#ff4d6d', '#ff9f1c', '#2ec4b6', '#9b5de5', '#00bbf9', '#f15bb5'];
   var AVATARS = ['🦁', '🐺', '🦅', '🐯', '🦈', '🐲', '🚀', '⚡', '🏀', '🎮', '🥷', '🤖', '🔥', '💪'];
   var LEVEL_TITLES = ['Rookie', 'Apprentice', 'Grinder', 'Go-Getter', 'Superstar', 'Legend', 'Boss', 'Demigod'];
 
   var state = loadState();
+  dlog('boot b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
   var serverVersion = state.version || 0;
   var pushTimer = null;
   var selectedAvatar = AVATARS[0];
@@ -50,6 +60,7 @@
   }
   function saveState() {
     state.version = Date.now();
+    dlog('save b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     syncPush();
   }
@@ -99,6 +110,7 @@
       state.settings.voiceEnabled = s.settings.voiceEnabled;
       state.settings.soundEnabled = s.settings.soundEnabled;
       if (s.settings.pin !== '2468') state.settings.pin = s.settings.pin;
+      if (s.settings.voiceGender === 'man' || s.settings.voiceGender === 'woman') state.settings.voiceGender = s.settings.voiceGender;
     }
     if (s.activeBoyId) state.activeBoyId = s.activeBoyId;
     state.version = Math.max(state.version || 0, s.version || 0);
@@ -111,15 +123,19 @@
       // Never adopt an empty state — it would wipe all the family's data.
       // If the server is empty (cold start / blobs unavailable), keep our
       // local copy and heal the server back up instead.
-      serverVersion = state.version;
-      pushNow();
+      dlog('sync EMPTY server -> heal local b=' + state.boys.length + ' t=' + state.tasks.length);
+      if (state.version > 0) pushNow();
       return;
     }
+    var before = JSON.stringify(state);
     mergeFrom(s);
     serverVersion = state.version;
-    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-    render();
-    pushNow();
+    if (JSON.stringify(state) !== before) {
+      dlog('sync merged server b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+      render();
+      pushNow();
+    }
     state.goals.forEach(function (g) {
       if (g.awarded && prev[g.id] !== true && prev[g.id] !== undefined) {
         var boy = boyById(g.boyId);
@@ -134,12 +150,7 @@
   function syncPoll() {
     httpRequest('GET', '/api/state', null, function (s) {
       if (!s) return;
-      s = normalizeState(s);
-      if (s.version > serverVersion) {
-        adoptServer(s);
-      } else if (s.version === 0 && state.version > 0) {
-        pushNow();
-      }
+      adoptServer(normalizeState(s));
     }, function () {});
   }
   function uid() { return 'id' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }

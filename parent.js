@@ -3,6 +3,14 @@
 
   var AVATARS = ['🦁', '🐺', '🦅', '🐯', '🦈', '🐲', '🚀', '⚡', '🏀', '🎮', '🥷', '🤖', '🔥', '💪'];
   var LS_KEY = 'bro_quest_v1';
+  function dlog(msg) {
+    try {
+      var arr = JSON.parse(localStorage.getItem('bq_log') || '[]');
+      arr.push(new Date().toISOString().slice(11, 19) + ' ' + msg);
+      while (arr.length > 30) arr.shift();
+      localStorage.setItem('bq_log', JSON.stringify(arr));
+    } catch (e) {}
+  }
 
   var state = {
     version: 0, boys: [], tasks: [], rewards: [], goals: [],
@@ -89,6 +97,7 @@
   }
   function save() {
     state.version = Date.now();
+    dlog('save b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
     writeCache();
     render();
     syncPush();
@@ -112,6 +121,7 @@
       state.settings.voiceEnabled = s.settings.voiceEnabled;
       state.settings.soundEnabled = s.settings.soundEnabled;
       if (s.settings.pin !== '2468') state.settings.pin = s.settings.pin;
+      if (s.settings.voiceGender === 'man' || s.settings.voiceGender === 'woman') state.settings.voiceGender = s.settings.voiceGender;
     }
     if (s.activeBoyId) state.activeBoyId = s.activeBoyId;
     state.version = Math.max(state.version || 0, s.version || 0);
@@ -124,11 +134,13 @@
       // Never adopt an empty state — it would wipe all the family's data.
       // If the server is empty (cold start / blobs unavailable), keep our
       // local copy and heal the server back up instead.
+      dlog('sync EMPTY server -> heal local b=' + state.boys.length + ' t=' + state.tasks.length);
       if (state.version > 0) pushNow();
     } else {
       mergeFrom(s);
       serverVersion = state.version;
       writeCache();
+      dlog('sync merged server b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
     }
     render();
   }
@@ -426,6 +438,7 @@
   // worse, writes back) an empty state. Then sync with the server.
   var cached = loadCache();
   if (cached) { state = cached; serverVersion = cached.version || 0; }
+  dlog('boot b=' + state.boys.length + ' t=' + state.tasks.length + ' v=' + state.version);
   render();
   fetchState(handleServer);
   setInterval(function () {
